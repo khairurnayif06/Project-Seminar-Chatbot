@@ -1,105 +1,200 @@
-# Gemini AI Chatbot — Project Sesi 3 (Hacktiv8)
+# Gemini AI Chatbot
 
-Chatbot sederhana berbasis **Node.js + Express** (backend) dan **Vanilla JavaScript** (frontend), terintegrasi dengan **Google Gemini AI API**.
+Project chatbot sederhana yang menghubungkan frontend Vanilla JavaScript dengan
+Google Gemini AI melalui backend Node.js dan Express. Pengguna dapat mengirim
+pesan melalui antarmuka web, kemudian server meneruskan riwayat percakapan ke
+Gemini dan menampilkan jawabannya kembali di halaman chatbot.
 
-## 1. Persiapan
+## Fitur
 
-Pastikan sudah terinstall:
-- Node.js v18+ (`node -v` untuk cek)
-- VS Code
-- API key Gemini dari https://aistudio.google.com/
+- Antarmuka chatbot berbasis HTML, CSS, dan Vanilla JavaScript.
+- Percakapan dikirim ke backend melalui endpoint `POST /api/chat`.
+- Riwayat pesan dipertahankan selama halaman masih terbuka.
+- Backend menyajikan file frontend dari folder `public`.
+- API key Gemini disimpan di environment variable, bukan di dalam source code.
+- Parameter model dapat dikonfigurasi untuk mengatur gaya respons AI.
 
-## 2. Install dependency
+## Teknologi yang Digunakan
 
-Buka folder project ini di terminal, lalu jalankan:
+- **Node.js**: runtime JavaScript untuk menjalankan server.
+- **Express**: framework HTTP untuk membuat server dan endpoint API.
+- **Google GenAI SDK**: library untuk memanggil Gemini API.
+- **Vanilla JavaScript**: mengatur interaksi dan komunikasi frontend dengan API.
+- **dotenv**: membaca konfigurasi dari file `.env`.
+- **CORS**: mengaktifkan dukungan Cross-Origin Resource Sharing.
 
-```bash
-npm install
-```
+## Persiapan
 
-Ini akan menginstall: `express`, `dotenv`, `cors`, `@google/genai`.
+Pastikan sudah terpasang:
 
-## 3. Setup API Key
+- Node.js versi 18 atau lebih baru
+- npm
+- API key Gemini dari [Google AI Studio](https://aistudio.google.com/)
 
-1. Salin file `.env.example` menjadi `.env`
-2. Isi `GEMINI_API_KEY` dengan API key kamu:
+## Instalasi dan Konfigurasi
 
-```
-GEMINI_API_KEY=isi_api_key_kamu_disini
-PORT=3000
-```
+1. Buka terminal di folder project.
+2. Install dependency:
 
-> `.env` sengaja sudah dimasukkan ke `.gitignore` — jangan pernah upload API key ke GitHub.
+   ```bash
+   npm install
+   ```
 
-## 4. Jalankan aplikasi
+3. Buat file `.env` di root project, sejajar dengan `index.js`:
+
+   ```env
+   GEMINI_API_KEY=isi_api_key_kamu
+   PORT=3000
+   ```
+
+File `.env` sudah tercantum di `.gitignore`, sehingga API key tidak ikut
+ter-upload ke GitHub. Jangan membagikan isi file tersebut.
+
+## Menjalankan Aplikasi
+
+Untuk menjalankan server:
 
 ```bash
 npm start
 ```
 
-Lalu buka browser ke: **http://localhost:3000**
+Mode development dengan restart otomatis saat file berubah:
 
-## 5. Struktur project
-
+```bash
+npm run dev
 ```
+
+Setelah server berjalan, buka [http://localhost:3000](http://localhost:3000)
+di browser.
+
+## Struktur Project
+
+```text
 gemini-chatbot-api/
-├── index.js          # Backend Express + endpoint /api/chat
-├── package.json
-├── .env.example       # Contoh isi .env (copy jadi .env)
-├── .gitignore
+├── index.js          # Server Express dan endpoint Gemini
+├── package.json      # Konfigurasi project dan dependency
+├── package-lock.json # Versi dependency yang terkunci
+├── .env              # API key dan konfigurasi lokal, tidak di-upload
+├── .gitignore        # Daftar file yang diabaikan Git
 └── public/
-    ├── index.html     # UI chatbot
-    ├── style.css
-    └── script.js      # Logic fetch ke backend
+    ├── index.html    # Struktur halaman chatbot
+    ├── style.css     # Tampilan chatbot
+    └── script.js     # Logika interaksi dan request API
 ```
 
-## 6. Kustomisasi (sesuai instruksi tugas)
+## Penjelasan Backend: `index.js`
 
-Bagian ini yang bisa kamu ubah sesuai kreativitas kamu untuk memenuhi instruksi
-"use case dan konfigurasi parameter sesuai kreativitas masing-masing":
+### 1. Import library dan konfigurasi server
 
-- **`SYSTEM_INSTRUCTION`** di `index.js` → ubah persona chatbot (misalnya jadi
-  customer service bot, education bot, travel assistant, dll).
-- **`temperature`, `topP`, `topK`** di `index.js` → atur tingkat kreativitas
-  jawaban (temperature tinggi = lebih kreatif, rendah = lebih presisi/faktual).
-- **Tampilan** di `style.css` / `index.html` → ubah warna, judul, layout sesuai selera.
+```js
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import { GoogleGenAI } from "@google/genai";
+```
 
-## 7. Testing API (opsional, pakai Postman)
+`dotenv/config` membaca file `.env`. Express digunakan untuk membuat server,
+CORS untuk middleware cross-origin, dan `GoogleGenAI` untuk berkomunikasi dengan
+Gemini.
 
-- Method: `POST`
-- URL: `http://localhost:3000/api/chat`
-- Body → raw → JSON:
+Server menggunakan nilai `PORT` dari `.env`. Jika tidak tersedia, server
+menggunakan port `3000`:
+
+```js
+const PORT = process.env.PORT || 3000;
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+```
+
+### 2. Middleware
+
+```js
+app.use(cors());
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
+```
+
+- `cors()` mengizinkan request dari origin lain.
+- `express.json()` membaca body request dalam format JSON.
+- `express.static()` membuat file di folder `public` dapat diakses browser.
+
+### 3. Instruksi sistem
+
+Konstanta `SYSTEM_INSTRUCTION` menentukan karakter chatbot: ramah, sopan,
+membantu, dan jujur ketika tidak mengetahui jawaban. Instruksi ini dikirim ke
+Gemini pada setiap request dan dapat diubah sesuai kebutuhan use case.
+
+### 4. Endpoint `POST /api/chat`
+
+Endpoint menerima body JSON dengan format:
 
 ```json
 {
   "conversation": [
-    { "role": "user", "text": "Halo, siapa kamu?" }
+    { "role": "user", "text": "Halo, siapa kamu?" },
+    { "role": "model", "text": "Saya asisten AI." }
   ]
 }
 ```
 
-Response yang diharapkan:
+Server kemudian:
+
+1. Memastikan `conversation` berbentuk array.
+2. Mengubah setiap pesan ke format `contents` yang dipahami Gemini.
+3. Memanggil `ai.models.generateContent()` dengan model `gemini-3.6-flash`.
+4. Mengatur parameter respons melalui `temperature`, `topP`, dan `topK`.
+5. Mengembalikan jawaban dalam format `{ "result": "..." }`.
+
+Jika input tidak valid, server mengembalikan status `400`. Jika terjadi error
+saat menghubungi Gemini, server mengembalikan status `500`.
+
+## Penjelasan Frontend
+
+### `public/index.html`
+
+File ini membuat struktur halaman yang terdiri dari judul, area chat dengan id
+`chat-box`, input pesan dengan id `user-input`, dan form `chat-form`. File
+`style.css` dan `script.js` dimuat di halaman ini.
+
+### `public/script.js`
+
+File ini menyimpan riwayat chat dalam array `conversation`. Saat form dikirim:
+
+1. Input kosong diabaikan.
+2. Pesan pengguna ditampilkan dan dimasukkan ke `conversation`.
+3. Browser mengirim request `POST` ke `/api/chat` menggunakan `fetch`.
+4. Pesan sementara `Gemini is thinking...` diganti dengan hasil dari server.
+5. Jawaban model dimasukkan kembali ke riwayat agar percakapan tetap memiliki
+   konteks pada request berikutnya.
+
+Fungsi `appendMessage()` membuat elemen pesan baru, memberi class sesuai role,
+dan otomatis menggulir area chat ke pesan terbaru.
+
+### `public/style.css`
+
+File ini mengatur tampilan container chatbot, area percakapan, pesan pengguna,
+pesan bot, input, serta tombol kirim.
+
+## Pengujian API dengan Postman
+
+- Method: `POST`
+- URL: `http://localhost:3000/api/chat`
+- Header: `Content-Type: application/json`
+- Body: `raw` dengan format JSON
 
 ```json
-{ "result": "..." }
+{
+  "conversation": [
+    { "role": "user", "text": "Jelaskan JavaScript secara singkat." }
+  ]
+}
 ```
 
-## 8. Submit ke GitHub (sesuai instruksi pengumpulan tugas)
+Respons berhasil memiliki format:
 
-```bash
-git init
-git add .
-git commit -m "Implementasi endpoint Gemini AI API"
-git branch -M main
-git remote add origin https://github.com/username-kamu/nama-repo-kamu.git
-git push -u origin main
+```json
+{
+  "result": "JavaScript adalah ..."
+}
 ```
 
-Lalu kumpulkan:
-- URL repository GitHub
-- Screenshot User Interface chatbot
 
-ke form pengumpulan tugas yang diberikan panitia.
-
-**Catatan penting:** karena `.env` sudah masuk `.gitignore`, API key kamu tidak
-akan ikut ter-push ke GitHub — itu memang benar dan aman.
